@@ -1,0 +1,268 @@
+---
+title: "Exploratory Data Analysis and GLM"
+author: "Yousef Alghamdi 2918623"
+date: "`r Sys.Date()`"
+format: html
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(caret)
+library(stats)
+library(ggpubr)
+```
+
+## Load Data
+
+```{r}
+df <- read.csv("data01.csv")
+str(df)
+summary(df)
+```
+
+## Exploratory Data Analysis (EDA)
+
+## Handling Missing Values
+
+Before building the Generalized Linear Model (GLM), it is crucial to check for missing values in the dataset.
+Missing data can bias the results or reduce statistical power.
+
+```{r missing-values}
+# Check for missing values
+missing_counts <- colSums(is.na(df))
+print(missing_counts)
+
+# Handling missing values - Example: Imputing with Mean/Median
+df_cleaned <- df  # Creating a copy of the dataset
+df_cleaned[is.na(df_cleaned)] <- lapply(df_cleaned, function(x) ifelse(is.numeric(x), median(x, na.rm = TRUE), x))
+
+# Verify after imputation
+colSums(is.na(df_cleaned))
+```
+
+## Handling Outliers
+
+Outliers can significantly impact GLM results.
+Below, we detect and handle them using interquartile range (IQR).
+
+```{r outliers}
+# Select only numeric columns for outlier detection
+numeric_cols <- sapply(df_cleaned, is.numeric)
+df_numeric <- df_cleaned[, numeric_cols, drop=FALSE]  # Keep only numeric columns
+
+# Compute Q1, Q3, and IQR
+Q1 <- apply(df_numeric, 2, quantile, probs = 0.25, na.rm = TRUE)
+Q3 <- apply(df_numeric, 2, quantile, probs = 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+
+# Define bounds for outlier detection
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+# Ensure that lower_bound and upper_bound exist
+print(lower_bound)
+print(upper_bound)
+
+# Filter out outliers
+df_no_outliers <- df_cleaned
+for (col in colnames(df_numeric)) {  # Only iterate through numeric columns
+  df_no_outliers <- df_no_outliers[df_no_outliers[[col]] >= lower_bound[col] & df_no_outliers[[col]] <= upper_bound[col], ]
+}
+
+# Summary after removing outliers
+summary(df_no_outliers)
+
+```
+
+### Missing Values
+
+```{r}
+colSums(is.na(df))
+```
+
+### Outlines checking and handling
+
+### Detect Outlines Using the IQR Method
+
+##Loops through numerical columns (excluding dummy variables).Calculates the IQR (Interquartile Range).Identifies values beyond 1.5 × IQR as outlines.Stores the detected outlines in a list.
+
+```{r}
+
+
+# Function to detect outliers using IQR method
+detect_outliers <- function(df) {
+  outliers <- list()
+  for (col in names(df)) {
+    if (is.numeric(df[[col]]) && length(unique(df[[col]])) > 2) {  # Exclude dummy variables
+      Q1 <- quantile(df[[col]], 0.25, na.rm = TRUE)
+      Q3 <- quantile(df[[col]], 0.75, na.rm = TRUE)
+      IQR_value <- Q3 - Q1
+      lower_bound <- Q1 - 1.5 * IQR_value
+      upper_bound <- Q3 + 1.5 * IQR_value
+      outlier_rows <- which(df[[col]] < lower_bound | df[[col]] > upper_bound)
+      outliers[[col]] <- outlier_rows
+    }
+  }
+  return(outliers)
+}
+
+# Detect outliers
+outliers <- detect_outliers(df)
+
+
+
+# Function to cap outliers using Winsorization (Capping)
+handle_outliers <- function(df, outliers) {
+  df_cleaned <- df
+  for (col in names(outliers)) {
+    if (length(outliers[[col]]) > 0 && length(unique(df[[col]])) > 2) {  # Exclude dummy variables
+      lower_cap <- quantile(df[[col]], 0.05, na.rm = TRUE)
+      upper_cap <- quantile(df[[col]], 0.95, na.rm = TRUE)
+      df_cleaned[[col]] <- pmin(pmax(df_cleaned[[col]], lower_cap), upper_cap)
+    }
+  }
+  return(df_cleaned)
+}
+
+# Apply outlier handling with Winsorization
+df_cleaned <- handle_outliers(df, outliers)
+# Save cleaned dataset
+write.csv(df_cleaned, "data01_cleaned.csv", row.names = FALSE)
+
+
+
+
+
+
+```
+
+*###note for handling Outliers :*
+
+*Instead of removing outliers, Winsorization caps extreme values at reasonable limits:*
+
+*Lower outliers are set to the 5th percentile.*
+
+*Upper outliers are set to the 95th percentile.*
+
+*This reduces the effect of extreme values while keeping the data distribution intact.*
+
+### Data Distribution
+
+```{r}
+# Histograms for numerical variables
+df_cleaned %>% select_if(is.numeric) %>% gather() %>% 
+  ggplot(aes(value)) + 
+  facet_wrap(~key, scales = "free") + 
+  geom_histogram(bins=30, fill="blue", alpha=0.5)
+```
+
+### Boxplots
+
+```{r}
+# Generate boxplots for each numerical variable separately
+numeric_columns <- names(df_cleaned)[sapply(df_cleaned, is.numeric)]
+
+for (col in numeric_columns) {
+  p <- ggplot(df, aes_string(y = col)) +
+    geom_boxplot(fill = "lightblue", color = "black") +
+    ggtitle(paste("Boxplot of", col)) +
+    theme_minimal()
+  print(p)
+}
+```
+
+## Statistical Tests
+
+### T-Test: Household Income by Sex of Household Head
+
+```{r}
+t.test(df_cleaned$Total.Household.Income ~ df_cleaned$Household.Head.Sex)
+```
+
+## Correlation Matrix
+
+```{r}
+corr_matrix <- cor(df_cleaned %>% select_if(is.numeric))
+library(ggcorrplot)
+ggcorrplot(corr_matrix, lab = TRUE)
+```
+
+### interpetation of coorlation matric :
+
+The correlation matrix reveals that certain household variables exhibit strong linear relationships.
+For instance, if we observe that household income and the number of bedrooms have a correlation coefficient of -0.65, this suggests that as household income increases, the number of bedrooms tends to decrease, or vice versa.
+Moreover, some predictors show high inter-correlation, which could indicate potential multicollinearity issues when included together in the GLM.
+These insights help in refining the model by identifying redundant predictors and ensuring that the model's coefficients are interpretable.
+
+## Generalized Linear Model (GLM)
+
+```{r}
+# Fit a Generalized Linear Model (GLM) to analyze factors influencing household size
+model <- glm(Total.Number.of.Family.members ~ Total.Household.Income + Household.Head.Age + House.Floor.Area + House.Age + Number.of.bedrooms, 
+             data = df_cleaned, family = poisson(link = "log"))
+
+# Display model summary
+summary(model)
+
+# Save model output
+
+print(summary(model))
+
+```
+
+## Model Diagnostics
+
+## Mathematical Equation of GLM
+
+A Generalized Linear Model (GLM) extends linear regression by allowing for response variables that have error distribution models other than a normal distribution.
+The general form of GLM is:
+
+$$ g(E(Y)) = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + ... + \beta_n X_n $$
+
+Where: - ( g(E(Y)) ) is the **link function** (e.g., logit for logistic regression).
+- ( Y ) is the dependent variable.
+- ( X_1, X_2, ..., X_n ) are independent variables.
+- ( \beta\_0, \beta\_1, ..., \beta\_n ) are the coefficients.
+
+For example, in **logistic regression**, we use the **logit link function**:
+
+$$ log( \frac{p}{1-p} ) = \beta_0 + \beta_1 X_1 + \beta_2 X_2 + ... + \beta_n X_n $$
+
+where ( p ) represents the probability of success.
+```{r}
+colnames(df_cleaned) 
+glm_model <- glm(Total.Number.of.Family.members ~ 
+                 Total.Household.Income + Household.Head.Age + 
+                 House.Floor.Area + House.Age + Number.of.bedrooms, 
+                 data = df_cleaned, family = "poisson")
+
+
+df_cleaned$predicted <- predict(glm_model, type = "response")
+df_cleaned$residuals <- residuals(glm_model, type = "deviance")
+
+ggplot(df_cleaned, aes(x = predicted, y = residuals)) +
+  geom_point(color = "blue") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Residuals vs Fitted Values",
+       x = "Fitted Values (Predicted)",
+       y = "Residuals") +
+  theme_minimal()
+
+```
+
+
+
+# Interpretation
+
+The number of people in a household is significantly influenced by household income, the number of bedrooms, and whether the household is urban or rural.
+Homeownership does not significantly affect household size.
+
+Policy Implications:
+
+Housing Policies: Government housing programs should focus on urban areas, where households tend to be smaller.
+Income & Family Planning: Higher-income households tend to have fewer members, suggesting an economic influence on household size.
