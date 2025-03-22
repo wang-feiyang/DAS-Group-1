@@ -1,0 +1,246 @@
+---
+title: "Household Size Analysis using GLM"
+author: "Yousef MB 2918623"
+date: "`r Sys.Date()`"
+format: html
+engine: knitr
+---
+
+```{r setup, include=FALSE}
+# Load necessary libraries
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(caret)
+library(stats)
+library(gridExtra)
+library(ggpubr)
+library(MASS)  # For Negative Binomial Regression
+library(reshape2)  # For correlation matrix visualization
+```
+
+# **1. Data Exploration & Preprocessing**
+
+## **Load and Inspect Data**
+
+```{r load_data}
+# Read the dataset
+df <- read.csv("dataset01.csv")
+
+# Display structure
+str(df)
+
+# Show first few rows
+head(df)
+```
+
+## **Convert Binary Variables:**
+
+We converted **binary categorical variables** into numerical format to ensure compatibility with GLM, which requires numeric input for continuous predictors. Encoding **Household.Head.Sex** as 0 and 1 allows the model to interpret its effect, while **Electricity** is kept as a factor to treat it as a categorical variable with distinct levels.
+
+```{r convert_binary}
+# Convert Household.Head.Sex to binary: Male = 1, Female = 0
+df$Household.Head.Sex <- ifelse(df$Household.Head.Sex == "Male", 1, 0)
+
+# Ensure Electricity is treated as a factor
+df$Electricity <- as.factor(df$Electricity)
+
+# Display summary of modified dataset
+summary(df)
+```
+
+## **Check for Missing Values & Handle Missing Data**
+
+Checking for missing values is essential to ensure **data quality and model reliability**. Missing data can **bias results**, reduce **statistical power**, or cause models like GLM to **fail or produce inaccurate estimates**. Proper handling (e.g., removal, imputation) ensures the dataset is **clean, complete, and ready for analysis**, allowing for more **trustworthy and interpretable** conclusions.
+
+**In this case, no missing values were found**, so the dataset was ready for modeling without further preprocessing. 
+
+```{r handle_missing_values}
+# Check for missing values in the dataset
+colSums(is.na(df))
+
+# Impute missing values using median (for numerical variables)
+df[is.na(df)] <- lapply(df, function(x) ifelse(is.numeric(x), median(x, na.rm = TRUE), x))
+```
+
+## **Data Visualization**
+
+### **Histograms & Boxplots**
+
+**Histograms** help visualize the **distribution and skewness** of numerical variables, while **boxplots** reveal **outliers, spread, and central tendency**. Together, they provide a quick, intuitive understanding of the data's shape, variability, and potential issues before modeling.
+
+```{r visualizations}
+
+
+# Boxplots for numerical variables before transformation
+par(mfrow = c(3, 3))
+numeric_cols <- c("Total.Food.Expenditure", "Total.Household.Income", "Total.Number.of.Family.members",
+                  "House.Floor.Area", "House.Age")
+
+for (col in numeric_cols) {
+  boxplot(df[[col]], main = paste("Boxplot of", col), col = "lightgreen", border = "black")
+}
+
+# Apply log transformations with handling for non-positive values (excluding Number.of.bedrooms)
+df <- df %>%
+  mutate(
+    Log_Total.Food.Expenditure = ifelse(Total.Food.Expenditure > 0, log(Total.Food.Expenditure), NA),
+    Log_Total.Household.Income = ifelse(Total.Household.Income > 0, log(Total.Household.Income), NA),
+    Log_Total.Number.of.Family.members = ifelse(Total.Number.of.Family.members > 0, log(Total.Number.of.Family.members + 1), NA),
+    Log_House.Floor.Area = ifelse(House.Floor.Area > 0, log(House.Floor.Area), NA),
+    Log_House.Age = ifelse(House.Age >= 0, log(House.Age + 1), NA)  # Apply log(x + 1) to avoid log(0)
+  )
+
+# Boxplots for Original vs Log Transformed Data
+bp_list <- list()
+var_names <- c("Total.Food.Expenditure", "Total.Household.Income", "Total.Number.of.Family.members",
+               "House.Floor.Area", "House.Age")
+
+for (var in var_names) {
+  bp_list <- append(bp_list, list(
+    ggplot(df, aes(y = .data[[var]])) + geom_boxplot(fill = "blue", alpha = 0.5) + ggtitle(paste(var, "(Original)")),
+    ggplot(df, aes(y = .data[[paste0("Log_", var)]])) + geom_boxplot(fill = "red", alpha = 0.5) + ggtitle(paste(var, "(Log Transformed)"))
+  ))
+}
+
+# Arrange boxplots in a grid
+grid.arrange(grobs = bp_list, ncol = 2)
+
+# Histograms for Original vs Log Transformed Data
+hist_list <- list()
+for (var in var_names) {
+  hist_list <- append(hist_list, list(
+    ggplot(df, aes(x = .data[[var]])) + geom_histogram(bins = 50, fill = "blue", alpha = 0.5, na.rm = TRUE) + ggtitle(paste(var, "(Original)")),
+    ggplot(df, aes(x = .data[[paste0("Log_", var)]])) + geom_histogram(bins = 50, fill = "red", alpha = 0.5, na.rm = TRUE) + ggtitle(paste(var, "(Log Transformed)"))
+  ))
+}
+
+# Arrange histograms in a grid
+grid.arrange(grobs = hist_list, ncol = 2)
+
+
+
+
+
+```
+
+I applied log transformations to Total.Food.Expenditure and Total.Household.Income using log(x), and to Total.Number.of.Family.members using log(x + 1) to avoid log(0). This reduces skewness, normalizes distributions, and minimizes outliers' influence. I visualized boxplots to detect outliers and histograms to compare distributions before and after transformation, ensuring better data interpretation and analysis
+
+### **Correlation Matrix Using ggplot2**
+
+```{r correlation_matrix_ggplot}
+
+
+
+
+# Apply log transformations with handling for non-positive values
+df <- df %>%
+  mutate(
+    Log_Total.Food.Expenditure = ifelse(Total.Food.Expenditure > 0, log(Total.Food.Expenditure), NA),
+    Log_Total.Household.Income = ifelse(Total.Household.Income > 0, log(Total.Household.Income), NA),
+    Log_Total.Number.of.Family.members = ifelse(Total.Number.of.Family.members > 0, log(Total.Number.of.Family.members + 1), NA),
+    Log_House.Floor.Area = ifelse(House.Floor.Area > 0, log(House.Floor.Area), NA),
+    Log_House.Age = ifelse(House.Age >= 0, log(House.Age + 1), NA)  # Apply log(x + 1) to avoid log(0)
+  )
+
+# Select only numeric variables, including log-transformed ones (without using select())
+numeric_vars <- df[, c("Total.Food.Expenditure", "Log_Total.Food.Expenditure", 
+                       "Total.Household.Income", "Log_Total.Household.Income",
+                       "Total.Number.of.Family.members", "Log_Total.Number.of.Family.members",
+                       "House.Floor.Area", "Log_House.Floor.Area",
+                       "House.Age", "Log_House.Age")]  # Excluding Log_Number.of.bedrooms
+
+# Compute correlation matrix
+cor_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Convert matrix to long format for ggplot
+cor_melted <- melt(cor_matrix)
+
+# Create correlation heatmap with annotation
+ggplot(data = cor_melted, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  geom_text(aes(label = sprintf("%.2f", value)), size = 3, color = "black") +  # Display correlation values
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0, limit = c(-1,1)) +
+  theme_minimal() +
+  labs(title = "Correlation Matrix Heatmap", fill = "Correlation") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
+
+```
+
+### **Key Interpretation of (Log_Total.Number.of.Family.members) Relationships**
+
+-   A **moderate positive correlation with (Log_Total.Food.Expenditure) (0.60)** suggests that higher food expenditure is associated with larger households, likely due to increased consumption needs as family size grows.
+
+-   A **weak correlation with (Log_Total.Household.Income) (0.32)** indicates that larger homes tend to accommodate slightly more family members, but the impact is minimal.
+
+Household income is the strongest predictor of family size, while housing space and utilities have minor effects.
+
+# **2.**Household Size and Its Determinants: A GLM Approach
+
+**Model 1: Poisson Regression**
+
+```{r poisson_glm}
+
+
+# Fit Poisson GLM using log-transformed predictors
+glm_poisson <- glm(
+  Total.Number.of.Family.members ~ 
+    Log_Total.Household.Income + 
+    Log_Total.Food.Expenditure + 
+    Log_House.Floor.Area + 
+    Household.Head.Age + 
+    Electricity,
+  family = poisson(link = "log"),
+  data = df
+)
+
+# View model summary
+summary(glm_poisson)
+
+```
+
+**Model 2: Negative Binomial Regression**
+
+```{r negbin_glm}
+negbin_model <- glm.nb(Total.Number.of.Family.members ~ 
+                         Log_Total.Household.Income + 
+                         Log_House.Floor.Area + 
+                         Household.Head.Sex + 
+                         Electricity + 
+                         Log_House.Age,
+                       data = df)
+
+# Display model summary
+summary(negbin_model)
+```
+
+# 4.Comparative Analysis of GLM Models
+
+```{r model_comparison}
+# Create AIC comparison table (excluding Quasi-Poisson)
+aic_values <- data.frame(
+  Model = c("Poisson", "Negative Binomial"),
+  AIC = c(AIC(glm_poisson), AIC(negbin_model))
+)
+
+# View AIC values
+aic_values
+
+```
+
+### **Model Selection & Interpretation**
+
+#### **Interpretation of Poisson Model** (AIC: **7045.7**, No Overdispersion)
+
+The **Poisson model** suggests that **household income, food expenditure, and house floor area** significantly influence household size. **Higher household income reduces** the number of family members, indicating smaller, wealthier families. **Increased food expenditure is linked to larger households**, as more members require higher spending. **House floor area has a weak negative effect**, suggesting more spacious homes accommodate fewer members. **Electricity and household head's age were not significant**. As overdispersion is minimal, this model is statistically efficient and recommended for predicting overall household size while maintaining simplicity.
+
+#### **Interpretation of Negative Binomial Model** (AIC: **7457.2**, Handles Overdispersion)
+
+The **Negative Binomial model** confirms that **household income, floor area, and head's gender significantly affect household size**. **Higher income still reduces household size**, while **males as household heads are associated with larger families**. **Floor area negatively impacts household size**, suggesting spacious homes house fewer individuals. Although AIC is slightly higher, this model is preferred when **considering the impact of overdispersion**. This model is ideal for policymakers focusing on **understanding key socioeconomic drivers** affecting household size, particularly **income and gender roles** in family structure.
+
+# **5. Conclusion & Policy Implications**
+
+From the Negative Binomial model, **household income, house floor area, and household head's gender** significantly influence household size. **Higher income is associated with smaller households**, while **male-headed households tend to have more members**. Additionally, **larger homes are linked to fewer occupants**, possibly reflecting better living conditions. This model effectively handles **overdispersion** in the data, making it more reliable for inference. It provides deeper insights into the **socioeconomic drivers** of household size, supporting policymakers in designing targeted interventions around **income, housing, and gender-based family dynamics**.
