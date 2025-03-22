@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.6.40">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Group1">
+<meta name="dcterms.date" content="2025-03-22">
+
+<title>Household Size Analysis using GLM</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="GLM_Group1_files/libs/clipboard/clipboard.min.js"></script>
+<script src="GLM_Group1_files/libs/quarto-html/quarto.js"></script>
+<script src="GLM_Group1_files/libs/quarto-html/popper.min.js"></script>
+<script src="GLM_Group1_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="GLM_Group1_files/libs/quarto-html/anchor.min.js"></script>
+<link href="GLM_Group1_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="GLM_Group1_files/libs/quarto-html/quarto-syntax-highlighting-549806ee2085284f45b00abea8c6df48.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="GLM_Group1_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="GLM_Group1_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="GLM_Group1_files/libs/bootstrap/bootstrap-973236bd072d72a04ee9cd82dcc9cb29.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN") {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Household Size Analysis using GLM</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Group1 </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">March 22, 2025</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="data-exploration-preprocessing" class="level1">
+<h1><strong>1. Data Exploration &amp; Preprocessing</strong></h1>
+<section id="load-and-inspect-data" class="level2">
+<h2 class="anchored" data-anchor-id="load-and-inspect-data"><strong>Load and Inspect Data</strong></h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Read the dataset</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"dataset01 1.csv"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Display structure</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'data.frame':   1725 obs. of  11 variables:
+ $ Total.Household.Income        : int  480332 198235 82785 107589 189322 152883 198621 134961 171152 625753 ...
+ $ Region                        : chr  "CAR" "CAR" "CAR" "CAR" ...
+ $ Total.Food.Expenditure        : int  117848 67766 61609 78189 94625 73326 104644 95644 67348 158721 ...
+ $ Household.Head.Sex            : chr  "Female" "Male" "Male" "Male" ...
+ $ Household.Head.Age            : int  49 40 39 52 65 46 45 33 17 53 ...
+ $ Type.of.Household             : chr  "Extended Family" "Single Family" "Single Family" "Single Family" ...
+ $ Total.Number.of.Family.members: int  4 3 6 3 4 4 5 5 2 6 ...
+ $ House.Floor.Area              : int  80 42 35 30 54 40 35 35 35 70 ...
+ $ House.Age                     : int  75 15 12 15 16 7 18 48 8 12 ...
+ $ Number.of.bedrooms            : int  3 2 1 1 3 2 1 2 1 3 ...
+ $ Electricity                   : int  1 1 0 1 1 1 1 1 1 1 ...</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Show first few rows</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Total.Household.Income Region Total.Food.Expenditure Household.Head.Sex
+1                 480332    CAR                 117848             Female
+2                 198235    CAR                  67766               Male
+3                  82785    CAR                  61609               Male
+4                 107589    CAR                  78189               Male
+5                 189322    CAR                  94625               Male
+6                 152883    CAR                  73326               Male
+  Household.Head.Age Type.of.Household Total.Number.of.Family.members
+1                 49   Extended Family                              4
+2                 40     Single Family                              3
+3                 39     Single Family                              6
+4                 52     Single Family                              3
+5                 65     Single Family                              4
+6                 46     Single Family                              4
+  House.Floor.Area House.Age Number.of.bedrooms Electricity
+1               80        75                  3           1
+2               42        15                  2           1
+3               35        12                  1           0
+4               30        15                  1           1
+5               54        16                  3           1
+6               40         7                  2           1</code></pre>
+</div>
+</div>
+</section>
+<section id="convert-engels-coefficient" class="level2">
+<h2 class="anchored" data-anchor-id="convert-engels-coefficient"><strong>Convert Engel’s Coefficient:</strong></h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">attach</span>(df)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cor</span>(Total.Food.Expenditure,Total.Household.Income)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.6114945</code></pre>
+</div>
+</div>
+<p>Since the “Total.Food.Expenditure” and “Total.Household.Income” has strong linear relationship, so we use Engel’s Coefficient(Total.Food.Expenditure/Total.Household.Income) to summarise the two variables and avoid multicollinearity</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>engle <span class="ot">&lt;-</span> df<span class="sc">$</span>Total.Food.Expenditure <span class="sc">/</span> df<span class="sc">$</span>Total.Household.Income</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="convert-binary-variables" class="level2">
+<h2 class="anchored" data-anchor-id="convert-binary-variables"><strong>Convert Binary Variables:</strong></h2>
+<p>We converted&nbsp;<strong>binary categorical variables</strong>&nbsp;into numerical format to ensure compatibility with GLM, which requires numeric input for continuous predictors. Encoding&nbsp;<strong>Household.Head.Sex</strong>&nbsp;as 0 and 1 allows the model to interpret its effect, while&nbsp;<strong>Electricity</strong>&nbsp;is kept as a factor to treat it as a categorical variable with distinct levels.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert Household.Head.Sex to binary: Male = 1, Female = 0</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>Household.Head.Sex <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(df<span class="sc">$</span>Household.Head.Sex <span class="sc">==</span> <span class="st">"Male"</span>, <span class="dv">1</span>, <span class="dv">0</span>)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Ensure Electricity is treated as a factor</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>Electricity <span class="ot">&lt;-</span> <span class="fu">as.factor</span>(df<span class="sc">$</span>Electricity)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Display summary of modified dataset</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(df)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> Total.Household.Income    Region          Total.Food.Expenditure
+ Min.   :  11988        Length:1725        Min.   :  6781        
+ 1st Qu.: 118565        Class :character   1st Qu.: 51922        
+ Median : 188580        Mode  :character   Median : 73578        
+ Mean   : 269540                           Mean   : 80353        
+ 3rd Qu.: 328335                           3rd Qu.: 98493        
+ Max.   :6042860                           Max.   :327724        
+ Household.Head.Sex Household.Head.Age Type.of.Household 
+ Min.   :0.0000     Min.   :17.00      Length:1725       
+ 1st Qu.:1.0000     1st Qu.:41.00      Class :character  
+ Median :1.0000     Median :52.00      Mode  :character  
+ Mean   :0.7861     Mean   :52.23                        
+ 3rd Qu.:1.0000     3rd Qu.:63.00                        
+ Max.   :1.0000     Max.   :99.00                        
+ Total.Number.of.Family.members House.Floor.Area   House.Age     
+ Min.   : 1.000                 Min.   :  5.00   Min.   :  0.00  
+ 1st Qu.: 3.000                 1st Qu.: 32.00   1st Qu.: 12.00  
+ Median : 4.000                 Median : 54.00   Median : 20.00  
+ Mean   : 4.669                 Mean   : 90.92   Mean   : 22.98  
+ 3rd Qu.: 6.000                 3rd Qu.:102.00   3rd Qu.: 31.00  
+ Max.   :15.000                 Max.   :900.00   Max.   :100.00  
+ Number.of.bedrooms Electricity     engle        
+ Min.   :0.000      0: 129      Min.   :0.02482  
+ 1st Qu.:1.000      1:1596      1st Qu.:0.25656  
+ Median :2.000                  Median :0.36782  
+ Mean   :2.259                  Mean   :0.39916  
+ 3rd Qu.:3.000                  3rd Qu.:0.51517  
+ Max.   :9.000                  Max.   :1.19637  </code></pre>
+</div>
+</div>
+</section>
+<section id="check-for-missing-values-handle-missing-data" class="level2">
+<h2 class="anchored" data-anchor-id="check-for-missing-values-handle-missing-data"><strong>Check for Missing Values &amp; Handle Missing Data</strong></h2>
+<p>Checking for missing values is essential to ensure&nbsp;<strong>data quality and model reliability</strong>. Missing data can&nbsp;<strong>bias results</strong>, reduce&nbsp;<strong>statistical power</strong>, or cause models like GLM to&nbsp;<strong>fail or produce inaccurate estimates</strong>. Proper handling (e.g., removal, imputation) ensures the dataset is&nbsp;<strong>clean, complete, and ready for analysis</strong>, allowing for more&nbsp;<strong>trustworthy and interpretable</strong>&nbsp;conclusions.</p>
+<p><strong>In this case, no missing values were found</strong>, so the dataset was ready for modeling without further preprocessing.&nbsp;</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Check for missing values in the dataset</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">colSums</span>(<span class="fu">is.na</span>(df))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        Total.Household.Income                         Region 
+                             0                              0 
+        Total.Food.Expenditure             Household.Head.Sex 
+                             0                              0 
+            Household.Head.Age              Type.of.Household 
+                             0                              0 
+Total.Number.of.Family.members               House.Floor.Area 
+                             0                              0 
+                     House.Age             Number.of.bedrooms 
+                             0                              0 
+                   Electricity                          engle 
+                             0                              0 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Impute missing values using median (for numerical variables)</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>df[<span class="fu">is.na</span>(df)] <span class="ot">&lt;-</span> <span class="fu">lapply</span>(df, <span class="cf">function</span>(x) <span class="fu">ifelse</span>(<span class="fu">is.numeric</span>(x), <span class="fu">median</span>(x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>), x))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="data-visualization" class="level2">
+<h2 class="anchored" data-anchor-id="data-visualization"><strong>Data Visualization</strong></h2>
+<section id="histograms-boxplots" class="level3">
+<h3 class="anchored" data-anchor-id="histograms-boxplots"><strong>Histograms &amp; Boxplots</strong></h3>
+<p><strong>Histograms</strong>&nbsp;help visualize the&nbsp;<strong>distribution and skewness</strong>&nbsp;of numerical variables, while&nbsp;<strong>boxplots</strong>&nbsp;reveal&nbsp;<strong>outliers, spread, and central tendency</strong>. Together, they provide a quick, intuitive understanding of the data’s shape, variability, and potential issues before modeling.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Boxplots for numerical variables </span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">3</span>))</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>numeric_cols <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Total.Number.of.Family.members"</span>,<span class="st">"Household.Head.Age"</span>,<span class="st">"Number.of.bedrooms"</span>,<span class="st">"engle"</span>,</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"House.Floor.Area"</span>, <span class="st">"House.Age"</span>)</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (col <span class="cf">in</span> numeric_cols) {</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">boxplot</span>(df[[col]], <span class="at">main =</span> <span class="fu">paste</span>(<span class="st">"Boxplot of"</span>, col), <span class="at">col =</span> <span class="st">"lightgreen"</span>, <span class="at">border =</span> <span class="st">"black"</span>)</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GLM_Group1_files/figure-html/unnamed-chunk-3-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Histogram for numerical variables </span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">3</span>))  </span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>Total.Number.of.Family.members, <span class="at">col=</span><span class="st">"lightblue"</span>, <span class="at">main=</span><span class="st">"Family Members"</span>, <span class="at">xlab=</span><span class="st">"Count"</span>)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>Household.Head.Age, <span class="at">col=</span><span class="st">"lightgreen"</span>, <span class="at">main=</span><span class="st">"Household Head Age"</span>, <span class="at">xlab=</span><span class="st">"Age"</span>)</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>Number.of.bedrooms, <span class="at">col=</span><span class="st">"lightcoral"</span>, <span class="at">main=</span><span class="st">"Bedrooms"</span>, <span class="at">xlab=</span><span class="st">"Number of Bedrooms"</span>)</span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>House.Floor.Area, <span class="at">col=</span><span class="st">"gold"</span>, <span class="at">main=</span><span class="st">"Floor Area"</span>, <span class="at">xlab=</span><span class="st">"Square Meters"</span>)</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>House.Age, <span class="at">col=</span><span class="st">"purple"</span>, <span class="at">main=</span><span class="st">"House Age"</span>, <span class="at">xlab=</span><span class="st">"Years"</span>)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>engle, <span class="at">col=</span><span class="st">"pink"</span>, <span class="at">main=</span><span class="st">"Engel's Coefficient"</span>, <span class="at">xlab=</span><span class="st">"Engel's Ratio"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GLM_Group1_files/figure-html/unnamed-chunk-4-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>From the boxplots and histogram we can see “Number.of.bedrooms” and “House.Floor.Area” have many outliers and their skewness are quite big. So, we use log transformations to “Number.of.bedrooms” and “House.Floor.Area” to reduce skewness, normalizes distributions, and minimizes outliers’ influence.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>log_House.Floor.Area<span class="ot">&lt;-</span> <span class="fu">log</span>(df<span class="sc">$</span>House.Floor.Area)</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>df<span class="sc">$</span>log_Number.of.bedrooms<span class="ot">&lt;-</span> <span class="fu">log</span>(df<span class="sc">$</span>Number.of.bedrooms<span class="sc">+</span><span class="dv">1</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>))  </span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>House.Floor.Area, <span class="at">col=</span><span class="st">"red"</span>)</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>log_House.Floor.Area, <span class="at">col=</span><span class="st">"blue"</span>)</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>Number.of.bedrooms, <span class="at">col=</span><span class="st">"red"</span>)</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(df<span class="sc">$</span>log_Number.of.bedrooms, <span class="at">col=</span><span class="st">"blue"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GLM_Group1_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="correlation-matrix-using-ggplot" class="level3">
+<h3 class="anchored" data-anchor-id="correlation-matrix-using-ggplot"><strong>Correlation Matrix Using ggplot</strong></h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>num_vars <span class="ot">&lt;-</span> df[, <span class="fu">c</span>(<span class="st">"Total.Number.of.Family.members"</span>,<span class="st">"Household.Head.Age"</span>,</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"log_Number.of.bedrooms"</span>,<span class="st">"log_House.Floor.Area"</span>, </span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"House.Age"</span>, <span class="st">"engle"</span>)]</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>cor_matrix <span class="ot">&lt;-</span> <span class="fu">cor</span>(num_vars, <span class="at">use=</span><span class="st">"complete.obs"</span>, <span class="at">method=</span><span class="st">"pearson"</span>)</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a><span class="fu">ggcorrplot</span>(cor_matrix, </span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>           <span class="at">lab=</span><span class="cn">TRUE</span>,</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>           <span class="at">colors =</span> <span class="fu">c</span>(<span class="st">"blue"</span>, <span class="st">"white"</span>, <span class="st">"red"</span>),  </span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>           <span class="at">title =</span> <span class="st">"Correlation Matrix"</span>)  </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GLM_Group1_files/figure-html/correlation_matrix_ggplot-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="key-interpretation-of-total.number.of.family.members-relationships" class="level3">
+<h3 class="anchored" data-anchor-id="key-interpretation-of-total.number.of.family.members-relationships"><strong>Key Interpretation of (Total.Number.of.Family.members) Relationships</strong></h3>
+<ul>
+<li><p>A&nbsp;<strong>weak positive correlation with (Engle’s coefficient) (0.14)</strong>&nbsp;suggests that higher ratio of food expenditure is associated with larger households.</p></li>
+<li><p>Other variables’impacts are minimal.</p></li>
+</ul>
+</section>
+</section>
+</section>
+<section id="household-size-and-its-determinants-a-glm-approach" class="level1">
+<h1><strong>2.Household Size and Its Determinants: A GLM Approach</strong></h1>
+<p><strong>Model 1: Poisson Regression</strong></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fit Poisson GLM using log-transformed predictors</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>poisson_model <span class="ot">&lt;-</span> <span class="fu">glm</span>(Total.Number.of.Family.members <span class="sc">~</span> Household.Head.Age<span class="sc">+</span>log_Number.of.bedrooms<span class="sc">+</span>log_House.Floor.Area<span class="sc">+</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>                   House.Age<span class="sc">+</span>engle<span class="sc">+</span>Electricity,</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>                   <span class="at">family =</span> <span class="fu">poisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>                   <span class="at">data =</span> df)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="co"># View model summary</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(poisson_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = Total.Number.of.Family.members ~ Household.Head.Age + 
+    log_Number.of.bedrooms + log_House.Floor.Area + House.Age + 
+    engle + Electricity, family = poisson(link = "log"), data = df)
+
+Coefficients:
+                         Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)             1.0800356  0.0914195  11.814  &lt; 2e-16 ***
+Household.Head.Age     -0.0011920  0.0008056  -1.480 0.138961    
+log_Number.of.bedrooms  0.1105076  0.0296748   3.724 0.000196 ***
+log_House.Floor.Area    0.0184744  0.0152487   1.212 0.225688    
+House.Age              -0.0022819  0.0007681  -2.971 0.002968 ** 
+engle                   0.4876682  0.0631490   7.723 1.14e-14 ***
+Electricity1            0.1944628  0.0474577   4.098 4.17e-05 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 2024.4  on 1724  degrees of freedom
+Residual deviance: 1925.5  on 1718  degrees of freedom
+AIC: 7602
+
+Number of Fisher Scoring iterations: 5</code></pre>
+</div>
+</div>
+<p><strong>Model 2: Negative Binomial Regression</strong></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>neg_bin_model <span class="ot">&lt;-</span> <span class="fu">glm.nb</span>(Total.Number.of.Family.members <span class="sc">~</span> Household.Head.Age<span class="sc">+</span>log_Number.of.bedrooms<span class="sc">+</span>log_House.Floor.Area<span class="sc">+</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>                   House.Age<span class="sc">+</span>engle<span class="sc">+</span>Electricity,</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>                   <span class="at">data =</span> df)</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summary</span>(neg_bin_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm.nb(formula = Total.Number.of.Family.members ~ Household.Head.Age + 
+    log_Number.of.bedrooms + log_House.Floor.Area + House.Age + 
+    engle + Electricity, data = df, init.theta = 44.86099906, 
+    link = log)
+
+Coefficients:
+                         Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)             1.0787239  0.0958501  11.254  &lt; 2e-16 ***
+Household.Head.Age     -0.0012207  0.0008463  -1.442 0.149188    
+log_Number.of.bedrooms  0.1103329  0.0311407   3.543 0.000396 ***
+log_House.Floor.Area    0.0188573  0.0160210   1.177 0.239180    
+House.Age              -0.0022904  0.0008059  -2.842 0.004484 ** 
+engle                   0.4893206  0.0665531   7.352 1.95e-13 ***
+Electricity1            0.1954781  0.0495833   3.942 8.07e-05 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for Negative Binomial(44.861) family taken to be 1)
+
+    Null deviance: 1836.8  on 1724  degrees of freedom
+Residual deviance: 1746.8  on 1718  degrees of freedom
+AIC: 7594.8
+
+Number of Fisher Scoring iterations: 1
+
+              Theta:  44.9 
+          Std. Err.:  15.9 
+
+ 2 x log-likelihood:  -7578.82 </code></pre>
+</div>
+</div>
+</section>
+<section id="comparative-analysis-of-glm-models" class="level1">
+<h1><strong>3.Comparative Analysis of GLM Models</strong></h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create AIC comparison table (excluding Quasi-Poisson)</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>aic_values <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Model =</span> <span class="fu">c</span>(<span class="st">"Poisson"</span>, <span class="st">"Negative Binomial"</span>),</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">AIC =</span> <span class="fu">c</span>(<span class="fu">AIC</span>(poisson_model), <span class="fu">AIC</span>(neg_bin_model))</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="co"># View AIC values</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>aic_values</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              Model      AIC
+1           Poisson 7602.011
+2 Negative Binomial 7594.820</code></pre>
+</div>
+</div>
+<p>Since the Negative Binomial model has the smaller AIC, we choose it as our final model.</p>
+<section id="formal-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="formal-analysis"><strong>Formal analysis</strong></h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(poisson_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = Total.Number.of.Family.members ~ Household.Head.Age + 
+    log_Number.of.bedrooms + log_House.Floor.Area + House.Age + 
+    engle + Electricity, family = poisson(link = "log"), data = df)
+
+Coefficients:
+                         Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)             1.0800356  0.0914195  11.814  &lt; 2e-16 ***
+Household.Head.Age     -0.0011920  0.0008056  -1.480 0.138961    
+log_Number.of.bedrooms  0.1105076  0.0296748   3.724 0.000196 ***
+log_House.Floor.Area    0.0184744  0.0152487   1.212 0.225688    
+House.Age              -0.0022819  0.0007681  -2.971 0.002968 ** 
+engle                   0.4876682  0.0631490   7.723 1.14e-14 ***
+Electricity1            0.1944628  0.0474577   4.098 4.17e-05 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 2024.4  on 1724  degrees of freedom
+Residual deviance: 1925.5  on 1718  degrees of freedom
+AIC: 7602
+
+Number of Fisher Scoring iterations: 5</code></pre>
+</div>
+</div>
+<section id="model-formula" class="level3">
+<h3 class="anchored" data-anchor-id="model-formula"><strong>Model Formula</strong></h3>
+<p>We model the expected number of household members ( E(Y) ) using a <strong>Negative Binomial Generalized Linear Model (GLM)</strong> with a log link function:</p>
+<p><span class="math display">\[
+\log(E(Y)) = \beta_0 + \beta_1 \cdot \text{Household.Head.Age} +
+\beta_2 \cdot \log(\text{Number.of.bedrooms}) +
+\beta_3 \cdot \log(\text{House.Floor.Area}) +
+\beta_4 \cdot \text{House.Age} +
+\beta_5 \cdot \text{Engel} +
+\beta_6 \cdot \text{Electricity}
+\]</span></p>
+<p>Where:</p>
+<ul>
+<li>( ): Total number of family members<br>
+</li>
+<li>( \text{Household.Head.Age ): Age of the head of household (in years)<br>
+</li>
+<li>( () ): Log-transformed number of bedrooms in the house<br>
+</li>
+<li>( () ): Log-transformed total floor area of the house<br>
+</li>
+<li>( ): Age of the house (in years)<br>
+</li>
+<li>( ): Engel ratio (food expenditure divided by income)<br>
+</li>
+<li>( ): Binary variable (1 = electricity available, 0 = no electricity)</li>
+</ul>
+</section>
+<section id="coefficients-interpretation" class="level3">
+<h3 class="anchored" data-anchor-id="coefficients-interpretation"><strong>Coefficients Interpretation</strong></h3>
+<p>The number of bedrooms, Engel coefficient, house age, and electricity access significantly influence family size. A 1% increase in the number of bedrooms is associated with a 0.11% increase in expected family members. Higher Engel coefficients are linked to larger families, indicating that households spending more on food relative to income tend to be bigger. Homes with electricity have, on average, 21.5% more family members than those without. In contrast, older houses are associated with slightly smaller families, with each additional year reducing expected family size by about 0.23%. The age of the household head and house floor area have no significant effect on family size in this model.</p>
+<p><strong>4.Model Assumptions</strong></p>
+<p>The model assumes count data with overdispersion and a log-linear relationship between predictors and the response. It also assumes independent observations and no perfect multicollinearity among predictors.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>mean_y <span class="ot">&lt;-</span> <span class="fu">mean</span>(df<span class="sc">$</span>Total.Number.of.Family.members)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>var_y <span class="ot">&lt;-</span> <span class="fu">var</span>(df<span class="sc">$</span>Total.Number.of.Family.members)</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"Mean:"</span>, mean_y, <span class="st">"Variance:"</span>, var_y))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Mean: 4.66898550724638 Variance: 5.44315007229564"</code></pre>
+</div>
+</div>
+<p>The variance of Total.Number.of.Family.members is quite similar to the mean of Total.Number.of.Family.members. So it makes sense to fit the poisson model. ##<strong>2.Independence of Errors</strong></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dwtest</span>(poisson_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Durbin-Watson test
+
+data:  poisson_model
+DW = 1.844, p-value = 0.0005338
+alternative hypothesis: true autocorrelation is greater than 0</code></pre>
+</div>
+</div>
+<p>The value of Durbin-Watson Test is 1.844(betwwen 0 and 2), so autocorrelation is not a major issue.</p>
+<p><strong>3.Multicollinearity</strong></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">vif</span>(neg_bin_model))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    Household.Head.Age log_Number.of.bedrooms   log_House.Floor.Area 
+              1.087765               1.524012               1.461157 
+             House.Age                  engle            Electricity 
+              1.066380               1.262763               1.067128 </code></pre>
+</div>
+</div>
+<p>No variables’ variance inflation factor is higher than 5. So the model does not have the problem of multicollinearity.</p>
+<p>#** Residuals vs fitted</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate residuals vs fitted plot for Negative Binomial model</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MASS)</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Assuming your model is named neg_bin_model</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a>residuals_nb <span class="ot">&lt;-</span> <span class="fu">resid</span>(neg_bin_model, <span class="at">type =</span> <span class="st">"pearson"</span>)</span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a>fitted_nb <span class="ot">&lt;-</span> <span class="fu">fitted</span>(neg_bin_model)</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot</span></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(fitted_nb, residuals_nb,</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Fitted values"</span>,</span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Pearson Residuals"</span>,</span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Residuals vs Fitted (Negative Binomial)"</span>,</span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>     <span class="at">pch =</span> <span class="dv">20</span>, <span class="at">col =</span> <span class="st">"darkblue"</span>)</span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="dv">0</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GLM_Group1_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+</section>
+<section id="conclusion." class="level1">
+<h1><strong>5. Conclusion.</strong></h1>
+<p>Our investigation sought to determine which household-related variables significantly influence the number of people living in a household. Using a Generalized Linear Model (GLM), specifically a Negative Binomial regression (selected due to overdispersion in the count data), we identified several key factors.</p>
+<p>The analysis revealed that:</p>
+<p>Number of bedrooms, Engel’s coefficient (food expenditure relative to income), age of the house, and electricity access are statistically significant predictors of household size. Households with more bedrooms and greater food expenditure relative to income tend to have more members. Access to electricity is associated with larger household sizes, suggesting links to infrastructure or socioeconomic status. Conversely, older homes tend to house fewer people. The age of the household head and floor area of the house were not found to be significant predictors in this model. These findings provide valuable insights for policymakers. Investments in housing infrastructure, improving household utilities, and understanding economic pressures on food spending may all play a role in addressing housing needs and demographic planning.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
