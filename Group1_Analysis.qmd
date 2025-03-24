@@ -1,0 +1,282 @@
+---
+title: "Household Size Analysis using GLM"
+author: "Group1"
+date: "`r Sys.Date()`"
+format: pdf
+engine: knitr
+---
+
+```{r setup, include=FALSE}
+# Load necessary libraries
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(caret)
+library(stats)
+library(gridExtra)
+library(ggpubr)
+library(MASS)  # For Negative Binomial Regression
+library(reshape2)  # For correlation matrix visualization
+library(ppcor)
+library(ggcorrplot)
+library(lmtest)
+library(car)
+```
+
+# **1. Data Exploration & Preprocessing**
+
+## **Load and Inspect Data**
+
+```{r load_data}
+# Read the dataset
+df <- read.csv("dataset01.csv")
+
+# Display structure
+str(df)
+
+# Show first few rows
+head(df)
+```
+
+## **Convert Engel's Coefficient:**
+
+```{r}
+attach(df)
+cor(Total.Food.Expenditure,Total.Household.Income)
+```
+
+Since the "Total.Food.Expenditure" and "Total.Household.Income" has strong linear relationship, so we use Engel's Coefficient(Total.Food.Expenditure/Total.Household.Income) to summarise the two variables and avoid multicollinearity
+
+```{r}
+df$engel <- df$Total.Food.Expenditure / df$Total.Household.Income
+
+```
+
+## **Convert Binary Variables:**
+
+We converted **binary categorical variables** into numerical format to ensure compatibility with GLM, which requires numeric input for continuous predictors. Encoding **Household.Head.Sex** as 0 and 1 allows the model to interpret its effect, while **Electricity** is kept as a factor to treat it as a categorical variable with distinct levels.
+
+```{r convert_binary}
+# Convert Household.Head.Sex to binary: Male = 1, Female = 0
+df$Household.Head.Sex <- ifelse(df$Household.Head.Sex == "Male", 1, 0)
+
+# Ensure Electricity is treated as a factor
+df$Electricity <- as.factor(df$Electricity)
+
+# Display summary of modified dataset
+summary(df)
+```
+
+## **Check for Missing Values & Handle Missing Data**
+
+Checking for missing values is essential to ensure **data quality and model reliability**. Missing data can **bias results**, reduce **statistical power**, or cause models like GLM to **fail or produce inaccurate estimates**. Proper handling (e.g., removal, imputation) ensures the dataset is **clean, complete, and ready for analysis**, allowing for more **trustworthy and interpretable** conclusions.
+
+**In this case, no missing values were found**, so the dataset was ready for modeling without further preprocessing. 
+
+```{r handle_missing_values}
+# Check for missing values in the dataset
+colSums(is.na(df))
+
+# Impute missing values using median (for numerical variables)
+df[is.na(df)] <- lapply(df, function(x) ifelse(is.numeric(x), median(x, na.rm = TRUE), x))
+```
+
+# **Data Visualization**
+
+## **Histograms & Boxplots**
+
+**Histograms** help visualize the **distribution and skewness** of numerical variables, while **boxplots** reveal **outliers, spread, and central tendency**. Together, they provide a quick, intuitive understanding of the data's shape, variability, and potential issues before modeling.
+
+```{r}
+# Boxplots for numerical variables 
+par(mfrow = c(2, 3))
+numeric_cols <- c("Total.Number.of.Family.members","Household.Head.Age","Number.of.bedrooms","engel",
+                  "House.Floor.Area", "House.Age")
+
+for (col in numeric_cols) {
+  boxplot(df[[col]], main = paste("Boxplot of", col), col = "lightgreen", border = "black")
+}
+```
+
+```{r}
+# Histogram for numerical variables 
+par(mfrow=c(2,3))  
+
+hist(df$Total.Number.of.Family.members, col="lightblue", main="Family Members", xlab="Count")
+hist(df$Household.Head.Age, col="lightgreen", main="Household Head Age", xlab="Age")
+hist(df$Number.of.bedrooms, col="lightcoral", main="Bedrooms", xlab="Number of Bedrooms")
+hist(df$House.Floor.Area, col="gold", main="Floor Area", xlab="Square Meters")
+hist(df$House.Age, col="purple", main="House Age", xlab="Years")
+hist(df$engel, col="pink", main="Engel's Coefficient", xlab="Engel's Ratio")
+
+```
+
+From the boxplots and histogram we can see "Number.of.bedrooms" and "House.Floor.Area" have many outliers and their skewness are quite big. So, we use log transformations to "Number.of.bedrooms" and "House.Floor.Area" to reduce skewness, normalizes distributions, and minimizes outliers' influence.
+
+```{r}
+df$log_House.Floor.Area<- log(df$House.Floor.Area)
+df$log_Number.of.bedrooms<- log(df$Number.of.bedrooms+1)
+
+par(mfrow=c(2,2))  
+
+hist(df$House.Floor.Area, col="red")
+hist(df$log_House.Floor.Area, col="blue")
+hist(df$Number.of.bedrooms, col="red")
+hist(df$log_Number.of.bedrooms, col="blue")
+
+```
+
+## **Correlation Matrix Using ggplot**
+
+```{r correlation_matrix_ggplot}
+
+
+num_vars <- df[, c("Total.Number.of.Family.members","Household.Head.Age",
+                   "log_Number.of.bedrooms","log_House.Floor.Area", 
+                   "House.Age", "engel")]
+
+
+cor_matrix <- cor(num_vars, use="complete.obs", method="pearson")
+
+ggcorrplot(cor_matrix, 
+           lab=TRUE,
+           colors = c("blue", "white", "red"),  
+           title = "Correlation Matrix")  
+```
+
+**Key Interpretation of (Total.Number.of.Family.members) Relationships**
+
+-   A **weak positive correlation with (Engle's coefficient) (0.14)** suggests that higher ratio of food expenditure is associated with larger households.
+
+-   Other variables'impacts are minimal.
+
+# **2.Household Size and Its Determinants: A GLM Approach**
+
+**Model 1: Poisson Regression**
+
+```{r poisson_glm}
+
+
+# Fit Poisson GLM using log-transformed predictors
+poisson_model <- glm(Total.Number.of.Family.members ~ Household.Head.Age+log_Number.of.bedrooms+log_House.Floor.Area+
+                   House.Age+engel+Electricity,
+                   family = poisson(link = "log"),
+                   data = df)
+
+# View model summary
+summary(poisson_model)
+
+```
+
+**Model 2: Negative Binomial Regression**
+
+```{r negbin_glm}
+neg_bin_model <- glm.nb(Total.Number.of.Family.members ~ Household.Head.Age+log_Number.of.bedrooms+log_House.Floor.Area+
+                   House.Age+engel+Electricity,
+                   data = df)
+  summary(neg_bin_model)
+```
+
+# **3.Comparative Analysis of GLM Models**
+
+```{r model_comparison}
+# Create AIC comparison table (excluding Quasi-Poisson)
+aic_values <- data.frame(
+  Model = c("Poisson", "Negative Binomial"),
+  AIC = c(AIC(poisson_model), AIC(neg_bin_model))
+)
+
+# View AIC values
+aic_values
+```
+
+Since the Negative Binomial model has the smaller AIC, we choose it as our final model.
+
+# **Formal analysis**
+
+```{r}
+summary(neg_bin_model)
+```
+
+## **Model Formula**
+
+We model the expected number of household members ( E(Y) ) using a **Negative Binomial Generalized Linear Model (GLM)** with a log link function:
+
+$$
+\log(E(Y)) = \beta_0 + \beta_1 \cdot \text{Household.Head.Age} + 
+\beta_2 \cdot \log(\text{Number.of.bedrooms}) + 
+\beta_3 \cdot \log(\text{House.Floor.Area}) + 
+\beta_4 \cdot \text{House.Age} + 
+\beta_5 \cdot \text{Engel} + 
+\beta_6 \cdot \text{Electricity}
+$$
+
+Where:
+
+-   Y : Total number of family members\
+-   Household.Head.Age: Age of the head of household (in years)\
+-   Number.of.bedrooms: Log-transformed number of bedrooms in the house\
+-   House.Floor.Area: Log-transformed total floor area of the house\
+-   House.Age: Age of the house (in years)\
+-   Engel: Engel ratio (food expenditure divided by income)\
+-   Electricity: Binary variable (1 = electricity available, 0 = no electricity)
+
+## **Residuals vs fitted**
+
+```{r}
+# Generate residuals vs fitted plot for Negative Binomial model
+library(MASS)
+
+# Assuming your model is named neg_bin_model
+residuals_nb <- resid(neg_bin_model, type = "pearson")
+fitted_nb <- fitted(neg_bin_model)
+
+# Plot
+plot(fitted_nb, residuals_nb,
+     xlab = "Fitted values",
+     ylab = "Pearson Residuals",
+     main = "Residuals vs Fitted (Negative Binomial)",
+     pch = 20, col = "darkblue")
+abline(h = 0, col = "red", lwd = 2)
+
+```
+
+## **Coefficients Interpretation**
+
+The number of bedrooms, Engel coefficient, house age, and electricity access significantly influence family size. A 1% increase in the number of bedrooms is associated with a 0.11% increase in expected family members. Higher Engel coefficients are linked to larger families, indicating that households spending more on food relative to income tend to be bigger. Homes with electricity have, on average, 21.5% more family members than those without. In contrast, older houses are associated with slightly smaller families, with each additional year reducing expected family size by about 0.23%. The age of the household head and house floor area have no significant effect on family size in this model.
+
+# **4.Model Assumptions**
+
+## **1.Overdispersion**
+
+```{r}
+mean_y <- mean(df$Total.Number.of.Family.members)
+var_y <- var(df$Total.Number.of.Family.members)
+print(paste("Mean:", mean_y, "Variance:", var_y))
+```
+
+The variance of Total.Number.of.Family.members is bigger than the mean of Total.Number.of.Family.members. So it makes sense to fit the Negative Binomial model instead of poisson model to avoid overdispersion.
+
+## **2.Independence of Errors**
+
+```{r}
+dwtest(neg_bin_model)
+```
+
+The value of Durbin-Watson Test is 1.844(betwwen 0 and 2), so autocorrelation is not a major issue.
+
+## **3.Multicollinearity**
+
+```{r}
+print(vif(neg_bin_model))
+```
+
+No variables' variance inflation factor is higher than 5. So the model does not have the problem of multicollinearity.
+
+# **5. Conclusion.**
+
+Our investigation sought to determine which household-related variables significantly influence the number of people living in a household. Using a Generalized Linear Model (GLM), specifically a Negative Binomial regression (selected due to overdispersion in the count data), we identified several key factors.
+
+The analysis revealed that:
+
+Number of bedrooms, Engel's coefficient (food expenditure relative to income), age of the house, and electricity access are statistically significant predictors of household size. Households with more bedrooms and greater food expenditure relative to income tend to have more members. Access to electricity is associated with larger household sizes, suggesting links to infrastructure or socioeconomic status. Conversely, older homes tend to house fewer people. The age of the household head and floor area of the house were not found to be significant predictors in this model. These findings provide valuable insights for policymakers. Investments in housing infrastructure, improving household utilities, and understanding economic pressures on food spending may all play a role in addressing housing needs and demographic planning.
